@@ -1,0 +1,18 @@
+# Node.js
+node_modules/
+dist/
+.env
+.env.local
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local Database
+backend/calendar.db
+backend/app/uploads/
+
+# Vercel
+.vercel/
