@@ -27,12 +27,13 @@ def run_reminders():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables
-    Base.metadata.create_all(bind=engine)
+    # Create tables locally, but bypass on Vercel to optimize cold starts and prevent startup blocks
+    is_vercel = os.environ.get("VERCEL") or os.environ.get("NOW_BUILDER")
+    if not is_vercel:
+        Base.metadata.create_all(bind=engine)
     # Ensure upload dir exists
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     # Start scheduler only if not on Vercel/serverless
-    is_vercel = os.environ.get("VERCEL") or os.environ.get("NOW_BUILDER")
     if not is_vercel:
         scheduler.add_job(run_reminders, "cron", hour=8, minute=0, id="daily_reminders", replace_existing=True)
         scheduler.start()
