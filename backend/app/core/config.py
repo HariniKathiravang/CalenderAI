@@ -3,6 +3,8 @@ from typing import List
 import json
 
 
+import os
+
 class Settings(BaseSettings):
     # Supabase PostgreSQL connection (Session pooler recommended for serverless)
     DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/student_calendar_management_system"
@@ -14,7 +16,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-this-secret-key-in-production-use-32chars"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
-    UPLOAD_DIR: str = "app/uploads"
+    UPLOAD_DIR: str = "/tmp/uploads" if (os.environ.get("VERCEL") or os.environ.get("NOW_BUILDER")) else "app/uploads"
     CORS_ORIGINS: str = '["http://localhost:5173","http://localhost:3000"]'
 
     @property

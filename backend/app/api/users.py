@@ -255,8 +255,8 @@ async def bulk_import_students(
 
     content = await file.read()
     try:
-        df = parse_roster_file(content, file.filename)
-        imported, failed, errors = bulk_insert_students(db, df)
+        records = parse_roster_file(content, file.filename)
+        imported, failed, errors = bulk_insert_students(db, records)
         return {"imported": imported, "failed": failed, "errors": errors[:50]}
     except ValueError as e:
         raise HTTPException(400, str(e))
