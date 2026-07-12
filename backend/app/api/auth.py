@@ -8,6 +8,11 @@ from app.auth.security import verify_password, create_access_token
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+@router.get("/login")
+def login_get():
+    return {"message": "Authentication endpoint active. Use POST with credentials to login."}
+
+
 @router.post("/login", response_model=Token)
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     user = None
