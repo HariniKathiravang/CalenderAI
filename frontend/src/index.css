@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FullCalendar theme overrides */
+.fc {
+  --fc-border-color: theme('colors.gray.100');
+  --fc-button-bg-color: theme('colors.gray.50');
+  --fc-button-border-color: theme('colors.gray.200');
+  --fc-button-hover-bg-color: theme('colors.gray.100');
+  --fc-button-hover-border-color: theme('colors.gray.200');
+  --fc-button-active-bg-color: theme('colors.gray.200');
+  --fc-today-bg-color: rgba(59, 130, 246, 0.04);
+  --fc-event-bg-color: transparent;
+  --fc-event-border-color: transparent;
+}
+
+.dark .fc {
+  --fc-border-color: #374151;
+  --fc-page-bg-color: #1f2937;
+  --fc-neutral-bg-color: #374151;
+  --fc-list-event-hover-bg-color: #374151;
+  --fc-today-bg-color: rgba(59, 130, 246, 0.08);
+  color: #f3f4f6;
+}
+
+/* Muted Thin Borders */
+.fc .fc-theme-standard td, 
+.fc .fc-theme-standard th {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.dark .fc .fc-theme-standard td, 
+.dark .fc .fc-theme-standard th {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.fc .fc-col-header-cell-cushion {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: theme('colors.gray.500');
+  padding: 8px 0 !important;
+}
+
+.fc .fc-daygrid-day-number {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: theme('colors.gray.600');
+  padding: 6px 8px !important;
+}
+
+.dark .fc .fc-daygrid-day-number {
+  color: theme('colors.gray.400');
+}
+
+/* Transparent Harnesses for custom rendering */
+.fc-daygrid-event-harness {
+  margin: 2px 4px !important;
+}
+
+.fc-daygrid-block-event,
+.fc-daygrid-dot-event,
+.fc-v-event,
+.fc-h-event {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.fc-event-main {
+  padding: 0 !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-gray-100 dark:bg-gray-800; }
+::-webkit-scrollbar-thumb { @apply bg-gray-300 dark:bg-gray-600 rounded-full; }
+
+/* Transitions */
+* { transition-property: background-color, border-color, color; transition-duration: 150ms; }
+
