@@ -1,0 +1,10 @@
+pytesseract
+pdf2image
+pillow
+ollama
+python-dotenv
+requests
+pydantic
+fastapi
+uvicorn
+python-multipart
