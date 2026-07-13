@@ -76,7 +76,7 @@ export default function EventForm({ initial, onSubmit, onCancel, userRole, userD
 
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} method="POST" className="space-y-4">
       {/* Prioritized File/Image Upload Section */}
       <div className="bg-blue-50/30 dark:bg-gray-800/50 p-4 rounded-xl border border-blue-100/60 dark:border-gray-700/60 space-y-2">
         <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
