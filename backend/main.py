@@ -75,24 +75,41 @@ app.include_router(notifications.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 
 
-@app.get("/")
+@app.get("/api")
 def root():
     return {"message": "EEC Calendar API is running", "version": "1.0.0"}
 
 
-@app.get("/health")
+@app.get("/api/health")
 def health():
     return {"status": "healthy"}
 
 
-@app.get("/db-test")
+@app.get("/api/db-test")
 def db_test():
+    results = {}
+    
+    # 1. Test database connection
     try:
         from sqlalchemy import text
         db = SessionLocal()
         db.execute(text("SELECT 1"))
         db.close()
-        return {"status": "connected"}
+        results["database"] = "connected"
     except Exception as e:
         import traceback
-        return {"status": "error", "message": str(e), "traceback": traceback.format_exc()}
+        results["database"] = f"error: {e}\n{traceback.format_exc()}"
+        
+    # 2. Test password verification (bcrypt)
+    try:
+        from app.auth.security import verify_password, get_password_hash
+        hashed = get_password_hash("testpassword")
+        if verify_password("testpassword", hashed):
+            results["bcrypt"] = "working"
+        else:
+            results["bcrypt"] = "failed to match"
+    except Exception as e:
+        import traceback
+        results["bcrypt"] = f"error: {e}\n{traceback.format_exc()}"
+        
+    return results
