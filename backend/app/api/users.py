@@ -124,6 +124,9 @@ def create_faculty(data: FacultyCreate, db: Session = Depends(get_db), current_u
         if not hod:
             raise HTTPException(400, "HOD profile not found")
         data.department_id = hod.department_id
+    else:
+        if data.department_id is None:
+            raise HTTPException(400, "department_id is required")
 
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(400, "Username already taken")
@@ -223,7 +226,11 @@ def create_student(data: StudentCreate, db: Session = Depends(get_db), current_u
         if not faculty or not faculty.class_id:
             raise HTTPException(400, "Faculty is not assigned to any class")
         data.class_id = faculty.class_id
-    elif current_user.role == RoleEnum.hod:
+    else:
+        if data.class_id is None:
+            raise HTTPException(400, "class_id is required")
+
+    if current_user.role == RoleEnum.hod:
         hod = current_user.hod
         if not hod:
             raise HTTPException(400, "HOD profile not found")

@@ -124,7 +124,7 @@ class FacultyCreate(BaseModel):
     name: str
     email: Optional[str] = None
     mobile_number: Optional[str] = None
-    department_id: int
+    department_id: Optional[int] = None
     class_id: Optional[int] = None
     designation: Optional[str] = None
 
@@ -165,7 +165,7 @@ class StudentCreate(BaseModel):
     name: str
     email: Optional[str] = None
     mobile_number: Optional[str] = None
-    class_id: int
+    class_id: Optional[int] = None
 
 
 class StudentOut(BaseModel):
