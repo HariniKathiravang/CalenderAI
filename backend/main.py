@@ -112,4 +112,25 @@ def db_test():
         import traceback
         results["bcrypt"] = f"error: {e}\n{traceback.format_exc()}"
         
+    # 3. Test mock login simulation
+    try:
+        from app.models.models import User, RoleEnum
+        from app.auth.security import verify_password, create_access_token
+        db = SessionLocal()
+        user = db.query(User).filter(User.username == "admin", User.role == RoleEnum.admin).first()
+        if not user:
+            results["login_sim"] = "user not found"
+        else:
+            verify_res = verify_password("Admin@123", user.password_hash)
+            token = create_access_token({"sub": str(user.id), "role": user.role.value})
+            results["login_sim"] = {
+                "user": user.username,
+                "verified": verify_res,
+                "token_len": len(token)
+            }
+        db.close()
+    except Exception as e:
+        import traceback
+        results["login_sim"] = f"error: {e}\n{traceback.format_exc()}"
+        
     return results
