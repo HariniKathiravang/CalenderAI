@@ -1,5 +1,6 @@
 import React from 'react'
 import { Calendar, Clock, MapPin, User, FileText, ChevronRight } from 'lucide-react'
+import { getBackendBaseUrl } from '../services/api'
 
 export default function EventFlashcard({ event, onClose }) {
   if (!event) return null
@@ -32,12 +33,7 @@ export default function EventFlashcard({ event, onClose }) {
   const priority = event.priority || 'STANDARD'
   const styles = priorityColors[priority] || priorityColors.STANDARD
 
-  // Helper to construct backend URL for links
-  const getBackendBaseUrl = () => {
-    // Check if base URL has /api and remove it for static files
-    const apiURL = window.location.origin.includes('localhost') ? 'http://localhost:8000' : ''
-    return apiURL
-  }
+
 
   return (
     <div className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-l-4 ${styles.border} overflow-hidden max-w-md mx-auto`}>

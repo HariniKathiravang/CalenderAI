@@ -6,13 +6,13 @@ from app.models.models import (
     Department, Faculty, Student, Event, HOD, Class, User,
     EventTarget, TargetTypeEnum, RoleEnum
 )
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, get_admin_user, get_hod_user, require_role
 
 router = APIRouter(prefix="/stats", tags=["Stats"])
 
 
 @router.get("/admin")
-def admin_stats(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def admin_stats(db: Session = Depends(get_db), current_user=Depends(get_admin_user)):
     today = date.today()
     return {
         "total_departments": db.query(Department).count(),
@@ -26,7 +26,7 @@ def admin_stats(db: Session = Depends(get_db), current_user=Depends(get_current_
 
 
 @router.get("/hod")
-def hod_stats(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def hod_stats(db: Session = Depends(get_db), current_user=Depends(get_hod_user)):
     today = date.today()
     hod = current_user.hod
     if not hod:
@@ -59,19 +59,13 @@ def hod_stats(db: Session = Depends(get_db), current_user=Depends(get_current_us
 
 
 @router.get("/faculty")
-def faculty_stats(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def faculty_stats(db: Session = Depends(get_db), current_user=Depends(require_role(RoleEnum.faculty, RoleEnum.admin, RoleEnum.hod))):
     today = date.today()
     faculty = current_user.faculty
     if not faculty:
         return {}
 
-    class_event_ids = []
-    if faculty.class_id:
-        class_event_ids = [t.event_id for t in db.query(EventTarget).filter(
-            EventTarget.target_type == TargetTypeEnum.CLASS,
-            EventTarget.target_id == faculty.class_id
-        ).all()]
-
+    # 1. Fetch college-wide and department event targets in batch
     college_ids = [t.event_id for t in db.query(EventTarget).filter(
         EventTarget.target_type == TargetTypeEnum.COLLEGE
     ).all()]
@@ -80,27 +74,53 @@ def faculty_stats(db: Session = Depends(get_db), current_user=Depends(get_curren
         EventTarget.target_id == faculty.department_id
     ).all()]
 
+    class_event_ids = []
+    if faculty.class_id:
+        class_event_ids = [t.event_id for t in db.query(EventTarget).filter(
+            EventTarget.target_type == TargetTypeEnum.CLASS,
+            EventTarget.target_id == faculty.class_id
+        ).all()]
+
     all_ids = list(set(class_event_ids + college_ids + dept_ids))
-    upcoming = db.query(Event).filter(
-        Event.id.in_(all_ids),
-        Event.event_date >= today
-    ).count() if all_ids else 0
+    
+    # 2. Load all upcoming event IDs in a single query
+    upcoming_events = db.query(Event.id).filter(Event.event_date >= today).all()
+    upcoming_event_ids = {e[0] for e in upcoming_events}
+    
+    upcoming = sum(1 for eid in all_ids if eid in upcoming_event_ids)
 
-    student_count = db.query(Student).filter(Student.class_id == faculty.class_id).count() if faculty.class_id else 0
-
+    # 3. Get all classes in department
     classes = db.query(Class).filter(Class.department_id == faculty.department_id).all()
+    class_ids = [c.id for c in classes]
+
+    # 4. Batch query student counts per class using group_by
+    from sqlalchemy import func
+    student_counts = {}
+    if class_ids:
+        sc_results = db.query(Student.class_id, func.count(Student.id))\
+            .filter(Student.class_id.in_(class_ids))\
+            .group_by(Student.class_id).all()
+        student_counts = {class_id: count for class_id, count in sc_results}
+
+    student_count = student_counts.get(faculty.class_id, 0) if faculty.class_id else 0
+
+    # 5. Batch query ALL class event targets in department in one query
+    class_event_map = {}
+    if class_ids:
+        class_targets = db.query(EventTarget).filter(
+            EventTarget.target_type == TargetTypeEnum.CLASS,
+            EventTarget.target_id.in_(class_ids)
+        ).all()
+        for t in class_targets:
+            class_event_map.setdefault(t.target_id, []).append(t.event_id)
+
+    # 6. Build response using in-memory calculations
     assigned_classes = []
     for c in classes:
-        sc = db.query(Student).filter(Student.class_id == c.id).count()
-        c_event_ids = [t.event_id for t in db.query(EventTarget).filter(
-            EventTarget.target_type == TargetTypeEnum.CLASS,
-            EventTarget.target_id == c.id
-        ).all()]
+        sc = student_counts.get(c.id, 0)
+        c_event_ids = class_event_map.get(c.id, [])
         c_all_ids = list(set(c_event_ids + college_ids + dept_ids))
-        c_upcoming = db.query(Event).filter(
-            Event.id.in_(c_all_ids),
-            Event.event_date >= today
-        ).count() if c_all_ids else 0
+        c_upcoming = sum(1 for eid in c_all_ids if eid in upcoming_event_ids)
 
         assigned_classes.append({
             "id": c.id,

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import date
 from app.database.session import get_db
@@ -66,11 +66,12 @@ def get_user_visible_event_ids(db: Session, user) -> List[int]:
         student = user.student
         if student:
             class_ = student.class_
-            dept_targets = db.query(EventTarget).filter(
-                EventTarget.target_type == TargetTypeEnum.DEPARTMENT,
-                EventTarget.target_id == class_.department_id
-            ).all()
-            ids.update(t.event_id for t in dept_targets)
+            if class_:
+                dept_targets = db.query(EventTarget).filter(
+                    EventTarget.target_type == TargetTypeEnum.DEPARTMENT,
+                    EventTarget.target_id == class_.department_id
+                ).all()
+                ids.update(t.event_id for t in dept_targets)
             class_targets = db.query(EventTarget).filter(
                 EventTarget.target_type == TargetTypeEnum.CLASS,
                 EventTarget.target_id == student.class_id
@@ -80,8 +81,10 @@ def get_user_visible_event_ids(db: Session, user) -> List[int]:
     return list(ids)
 
 
-def enrich_event(event: Event, db: Session) -> dict:
-    creator = db.query(User).filter(User.id == event.created_by).first()
+def enrich_event(event: Event, db: Session = None) -> dict:
+    creator = event.creator
+    if not creator and db is not None:
+        creator = db.query(User).filter(User.id == event.created_by).first()
     creator_name = ""
     if creator:
         if creator.admin:
@@ -135,7 +138,12 @@ def get_events(
     current_user=Depends(get_current_user)
 ):
     event_ids = get_user_visible_event_ids(db, current_user)
-    query = db.query(Event).filter(Event.id.in_(event_ids))
+    query = db.query(Event).options(
+        joinedload(Event.creator).joinedload(User.admin),
+        joinedload(Event.creator).joinedload(User.hod),
+        joinedload(Event.creator).joinedload(User.faculty),
+        joinedload(Event.targets)
+    ).filter(Event.id.in_(event_ids))
 
     if start_date:
         query = query.filter(Event.event_date >= start_date)
@@ -278,7 +286,7 @@ def delete_event(event_id: int, db: Session = Depends(get_db), current_user=Depe
 
     title = event.title
     targets_copy = list(event.targets)
-    notify_event_deleted(db, title, targets_copy)
+    notify_event_deleted(db, title, targets_copy, current_user.id)
     db.delete(event)
     db.commit()
     return {"message": "Event deleted"}

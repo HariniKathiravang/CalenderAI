@@ -18,6 +18,9 @@ async def save_upload(file: UploadFile) -> dict:
         raise ValueError(f"File type '{ext}' not allowed")
 
     content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise ValueError("File size exceeds 10MB limit")
+        
     unique_name = f"{uuid.uuid4().hex}{ext}"
 
     # TODO: Connect LLM parser here

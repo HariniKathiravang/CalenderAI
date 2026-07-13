@@ -3,10 +3,11 @@ from app.models.models import Notification, User, Student, Faculty, HOD, EventTa
 from typing import List
 
 
-def create_notification(db: Session, user_id: int, message: str):
+def create_notification(db: Session, user_id: int, message: str, commit: bool = True):
     notif = Notification(user_id=user_id, message=message)
     db.add(notif)
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def get_target_user_ids(db: Session, targets: List[EventTarget]) -> List[int]:
@@ -39,21 +40,27 @@ def notify_event_created(db: Session, event, creator_name: str):
     user_ids = get_target_user_ids(db, event.targets)
     msg = f"New event: '{event.title}' on {event.event_date} created by {creator_name}"
     for uid in user_ids:
-        create_notification(db, uid, msg)
+        if uid != event.created_by:
+            create_notification(db, uid, msg, commit=False)
+    db.commit()
 
 
 def notify_event_updated(db: Session, event, creator_name: str):
     user_ids = get_target_user_ids(db, event.targets)
     msg = f"Event updated: '{event.title}' on {event.event_date}"
     for uid in user_ids:
-        create_notification(db, uid, msg)
+        if uid != event.created_by:
+            create_notification(db, uid, msg, commit=False)
+    db.commit()
 
 
-def notify_event_deleted(db: Session, event_title: str, targets: List[EventTarget]):
+def notify_event_deleted(db: Session, event_title: str, targets: List[EventTarget], creator_id: int = None):
     user_ids = get_target_user_ids(db, targets)
     msg = f"Event cancelled: '{event_title}'"
     for uid in user_ids:
-        create_notification(db, uid, msg)
+        if uid != creator_id:
+            create_notification(db, uid, msg, commit=False)
+    db.commit()
 
 
 def send_reminder_notifications(db: Session):
@@ -70,4 +77,5 @@ def send_reminder_notifications(db: Session):
                 Notification.message == msg
             ).first()
             if not existing:
-                create_notification(db, uid, msg)
+                create_notification(db, uid, msg, commit=False)
+    db.commit()

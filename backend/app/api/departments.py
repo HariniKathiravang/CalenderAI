@@ -31,6 +31,12 @@ def update_department(dept_id: int, data: DepartmentCreate, db: Session = Depend
     dept = db.query(Department).filter(Department.id == dept_id).first()
     if not dept:
         raise HTTPException(status_code=404, detail="Department not found")
+        
+    if data.department_code != dept.department_code:
+        existing = db.query(Department).filter(Department.department_code == data.department_code).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Department code already exists")
+            
     dept.department_name = data.department_name
     dept.department_code = data.department_code
     db.commit()

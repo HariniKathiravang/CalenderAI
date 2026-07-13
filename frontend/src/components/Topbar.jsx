@@ -19,7 +19,21 @@ export default function Topbar({ onMenuClick }) {
   useEffect(() => {
     fetchUnread()
     const interval = setInterval(fetchUnread, 30000)
-    return () => clearInterval(interval)
+    
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setShowNotifs(false)
+      }
+      if (userRef.current && !userRef.current.contains(event.target)) {
+        setShowUser(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [])
 
   const fetchUnread = async () => {

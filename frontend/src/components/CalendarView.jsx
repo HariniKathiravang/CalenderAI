@@ -66,6 +66,13 @@ export default function CalendarView({ events }) {
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
           }}
+          buttonText={{
+            today: 'Today',
+            month: 'Month',
+            week: 'Week',
+            day: 'Day',
+            list: 'List'
+          }}
           events={calendarEvents}
           eventClick={({ event }) => setSelected(event.extendedProps)}
           eventContent={renderEventContent}

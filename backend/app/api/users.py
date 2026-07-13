@@ -8,9 +8,10 @@ from app.schemas.schemas import (
     StudentCreate, StudentOut, StudentUpdate, BulkImportResult
 )
 from app.models.models import User, Admin, HOD, Faculty, Student, RoleEnum
-from app.auth.dependencies import get_current_user, get_admin_user
+from app.auth.dependencies import get_current_user, get_admin_user, get_hod_user
 from app.auth.security import get_password_hash
-from app.services.student_import_service import parse_roster_file, bulk_insert_students
+from app.services.bulk_import_service import parse_bulk_file, bulk_import_users
+
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -93,7 +94,9 @@ def delete_hod(hod_id: int, db: Session = Depends(get_db), _=Depends(get_admin_u
     hod = db.query(HOD).filter(HOD.id == hod_id).first()
     if not hod:
         raise HTTPException(404, "HOD not found")
-    db.delete(hod.user)
+    user = hod.user
+    db.delete(hod)
+    db.delete(user)
     db.commit()
     return {"message": "HOD deleted"}
 
@@ -115,7 +118,13 @@ def list_faculty(
 
 
 @router.post("/faculty", response_model=FacultyOut)
-def create_faculty(data: FacultyCreate, db: Session = Depends(get_db), _=Depends(get_admin_user)):
+def create_faculty(data: FacultyCreate, db: Session = Depends(get_db), current_user=Depends(get_hod_user)):
+    if current_user.role == RoleEnum.hod:
+        hod = current_user.hod
+        if not hod:
+            raise HTTPException(400, "HOD profile not found")
+        data.department_id = hod.department_id
+
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(400, "Username already taken")
     if db.query(Faculty).filter(Faculty.employee_id == data.employee_id).first():
@@ -140,10 +149,17 @@ def create_faculty(data: FacultyCreate, db: Session = Depends(get_db), _=Depends
 
 
 @router.put("/faculty/{faculty_id}", response_model=FacultyOut)
-def update_faculty(faculty_id: int, data: FacultyUpdate, db: Session = Depends(get_db), _=Depends(get_admin_user)):
+def update_faculty(faculty_id: int, data: FacultyUpdate, db: Session = Depends(get_db), current_user=Depends(get_hod_user)):
     faculty = db.query(Faculty).filter(Faculty.id == faculty_id).first()
     if not faculty:
         raise HTTPException(404, "Faculty not found")
+    
+    if current_user.role == RoleEnum.hod:
+        hod = current_user.hod
+        if not hod or faculty.department_id != hod.department_id:
+            raise HTTPException(403, "Not authorized to update this faculty")
+        data.department_id = hod.department_id
+
     for field in ["name", "email", "mobile_number", "department_id", "class_id", "designation"]:
         val = getattr(data, field)
         if val is not None:
@@ -158,11 +174,19 @@ def update_faculty(faculty_id: int, data: FacultyUpdate, db: Session = Depends(g
 
 
 @router.delete("/faculty/{faculty_id}")
-def delete_faculty(faculty_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)):
+def delete_faculty(faculty_id: int, db: Session = Depends(get_db), current_user=Depends(get_hod_user)):
     faculty = db.query(Faculty).filter(Faculty.id == faculty_id).first()
     if not faculty:
         raise HTTPException(404, "Faculty not found")
-    db.delete(faculty.user)
+    
+    if current_user.role == RoleEnum.hod:
+        hod = current_user.hod
+        if not hod or faculty.department_id != hod.department_id:
+            raise HTTPException(403, "Not authorized to delete this faculty")
+
+    user = faculty.user
+    db.delete(faculty)
+    db.delete(user)
     db.commit()
     return {"message": "Faculty deleted"}
 
@@ -190,7 +214,24 @@ def list_students(
 
 
 @router.post("/students", response_model=StudentOut)
-def create_student(data: StudentCreate, db: Session = Depends(get_db), _=Depends(get_admin_user)):
+def create_student(data: StudentCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    if current_user.role not in [RoleEnum.admin, RoleEnum.hod, RoleEnum.faculty]:
+        raise HTTPException(403, "Not authorized to create students")
+
+    if current_user.role == RoleEnum.faculty:
+        faculty = current_user.faculty
+        if not faculty or not faculty.class_id:
+            raise HTTPException(400, "Faculty is not assigned to any class")
+        data.class_id = faculty.class_id
+    elif current_user.role == RoleEnum.hod:
+        hod = current_user.hod
+        if not hod:
+            raise HTTPException(400, "HOD profile not found")
+        from app.models.models import Class
+        cls = db.query(Class).filter(Class.id == data.class_id).first()
+        if not cls or cls.department_id != hod.department_id:
+            raise HTTPException(400, "Selected class does not belong to your department")
+
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(400, "Username already taken")
     if db.query(Student).filter(Student.registration_number == data.registration_number).first():
@@ -213,10 +254,29 @@ def create_student(data: StudentCreate, db: Session = Depends(get_db), _=Depends
 
 
 @router.put("/students/{student_id}", response_model=StudentOut)
-def update_student(student_id: int, data: StudentUpdate, db: Session = Depends(get_db), _=Depends(get_admin_user)):
+def update_student(student_id: int, data: StudentUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    if current_user.role not in [RoleEnum.admin, RoleEnum.hod, RoleEnum.faculty]:
+        raise HTTPException(403, "Not authorized to update students")
+
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(404, "Student not found")
+
+    if current_user.role == RoleEnum.faculty:
+        faculty = current_user.faculty
+        if not faculty or student.class_id != faculty.class_id:
+            raise HTTPException(403, "Not authorized to update this student")
+        data.class_id = faculty.class_id
+    elif current_user.role == RoleEnum.hod:
+        hod = current_user.hod
+        if not hod or student.class_.department_id != hod.department_id:
+            raise HTTPException(403, "Not authorized to update this student")
+        if data.class_id is not None:
+            from app.models.models import Class
+            cls = db.query(Class).filter(Class.id == data.class_id).first()
+            if not cls or cls.department_id != hod.department_id:
+                raise HTTPException(400, "Selected class does not belong to your department")
+
     for field in ["name", "email", "mobile_number", "class_id"]:
         val = getattr(data, field)
         if val is not None:
@@ -231,11 +291,26 @@ def update_student(student_id: int, data: StudentUpdate, db: Session = Depends(g
 
 
 @router.delete("/students/{student_id}")
-def delete_student(student_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)):
+def delete_student(student_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    if current_user.role not in [RoleEnum.admin, RoleEnum.hod, RoleEnum.faculty]:
+        raise HTTPException(403, "Not authorized to delete students")
+
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(404, "Student not found")
-    db.delete(student.user)
+
+    if current_user.role == RoleEnum.faculty:
+        faculty = current_user.faculty
+        if not faculty or student.class_id != faculty.class_id:
+            raise HTTPException(403, "Not authorized to delete this student")
+    elif current_user.role == RoleEnum.hod:
+        hod = current_user.hod
+        if not hod or student.class_.department_id != hod.department_id:
+            raise HTTPException(403, "Not authorized to delete this student")
+
+    user = student.user
+    db.delete(student)
+    db.delete(user)
     db.commit()
     return {"message": "Student deleted"}
 
@@ -244,9 +319,9 @@ def delete_student(student_id: int, db: Session = Depends(get_db), _=Depends(get
 async def bulk_import_students(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _=Depends(get_admin_user),
+    _=Depends(get_hod_user),
 ):
-    """Parse Excel/CSV roster and batch-insert students (standard Python, no LLM)."""
+    """Parse Excel/CSV roster and batch-insert students and faculties."""
     if not file.filename:
         raise HTTPException(400, "No file provided")
     ext = file.filename.rsplit(".", 1)[-1].lower()
@@ -255,8 +330,10 @@ async def bulk_import_students(
 
     content = await file.read()
     try:
-        records = parse_roster_file(content, file.filename)
-        imported, failed, errors = bulk_insert_students(db, records)
+        records = parse_bulk_file(content, file.filename)
+        if len(records) > 50:
+            raise HTTPException(400, "Maximum of 50 rows allowed per import")
+        imported, failed, errors = bulk_import_users(db, records)
         return {"imported": imported, "failed": failed, "errors": errors[:50]}
     except ValueError as e:
         raise HTTPException(400, str(e))

@@ -4,7 +4,7 @@ from typing import List
 from app.database.session import get_db
 from app.schemas.schemas import NotificationOut
 from app.models.models import Notification
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, get_admin_user
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -20,7 +20,7 @@ def get_notifications(db: Session = Depends(get_db), current_user=Depends(get_cu
 def get_unread_count(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     count = db.query(Notification).filter(
         Notification.user_id == current_user.id,
-        Notification.is_read == False
+        Notification.is_read.is_(False)
     ).count()
     return {"count": count}
 
@@ -41,14 +41,14 @@ def mark_read(notif_id: int, db: Session = Depends(get_db), current_user=Depends
 def mark_all_read(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     db.query(Notification).filter(
         Notification.user_id == current_user.id,
-        Notification.is_read == False
+        Notification.is_read.is_(False)
     ).update({"is_read": True})
     db.commit()
     return {"message": "All notifications marked as read"}
 
 
 @router.post("/run-reminders")
-def run_reminders(db: Session = Depends(get_db)):
+def run_reminders(db: Session = Depends(get_db), current_user=Depends(get_admin_user)):
     """Trigger sending reminder notifications manually or via a Cron job."""
     from app.services.notification_service import send_reminder_notifications
     send_reminder_notifications(db)

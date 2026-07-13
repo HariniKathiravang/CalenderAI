@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { FormField, Input, Textarea, Select, Button } from './ui'
-import api from '../services/api'
+import api, { getBackendBaseUrl } from '../services/api'
 
 export default function EventForm({ initial, onSubmit, onCancel, userRole, userDeptId, userClassId }) {
   const [form, setForm] = useState({
@@ -73,11 +73,7 @@ export default function EventForm({ initial, onSubmit, onCancel, userRole, userD
     return ['CLASS']
   }
 
-  // Helper to construct backend URL for links
-  const getBackendBaseUrl = () => {
-    const apiURL = api.defaults.baseURL || 'http://localhost:8000/api'
-    return apiURL.endsWith('/api') ? apiURL.substring(0, apiURL.length - 4) : apiURL
-  }
+
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

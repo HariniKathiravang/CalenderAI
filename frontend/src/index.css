@@ -24,6 +24,77 @@
   color: #f3f4f6;
 }
 
+/* Premium FullCalendar button overrides */
+.fc .fc-button {
+  text-transform: capitalize !important;
+  font-size: 0.8rem !important;
+  font-weight: 550 !important;
+  padding: 5px 12px !important;
+  border-radius: 8px !important;
+  transition: all 150ms ease-in-out !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.fc .fc-button-primary {
+  background-color: theme('colors.white') !important;
+  border-color: theme('colors.gray.250', '#e2e8f0') !important;
+  color: theme('colors.gray.700') !important;
+}
+
+.fc .fc-button-primary:hover {
+  background-color: theme('colors.gray.50') !important;
+  border-color: theme('colors.gray.300') !important;
+  color: theme('colors.gray.900') !important;
+}
+
+.fc .fc-button-primary:not(:disabled):active,
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: theme('colors.blue.600') !important;
+  border-color: theme('colors.blue.600') !important;
+  color: theme('colors.white') !important;
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+.dark .fc .fc-button-primary {
+  background-color: theme('colors.gray.800') !important;
+  border-color: theme('colors.gray.700') !important;
+  color: theme('colors.gray.200') !important;
+}
+
+.dark .fc .fc-button-primary:hover {
+  background-color: #374151 !important;
+  border-color: theme('colors.gray.600') !important;
+  color: theme('colors.white') !important;
+}
+
+.dark .fc .fc-button-primary:not(:disabled):active,
+.dark .fc .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: theme('colors.blue.500') !important;
+  border-color: theme('colors.blue.500') !important;
+  color: theme('colors.white') !important;
+}
+
+/* Fix border radius for button groups */
+.fc .fc-button-group > .fc-button {
+  border-radius: 0 !important;
+}
+
+.fc .fc-button-group > .fc-button:first-child {
+  border-top-left-radius: 8px !important;
+  border-bottom-left-radius: 8px !important;
+}
+
+.fc .fc-button-group > .fc-button:last-child {
+  border-top-right-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
+
+/* Today button spacing */
+.fc .fc-today-button {
+  border-radius: 8px !important;
+  margin-left: 8px !important;
+}
+
 /* Muted Thin Borders */
 .fc .fc-theme-standard td, 
 .fc .fc-theme-standard th {

@@ -8,9 +8,7 @@ from app.auth.security import verify_password, create_access_token
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.get("/login")
-def login_get():
-    return {"message": "Authentication endpoint active. Use POST with credentials to login."}
+
 
 
 @router.post("/login", response_model=Token)
@@ -64,5 +62,25 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/me")
-def get_me(db: Session = Depends(get_db)):
-    return {"message": "Use Bearer token to access protected routes"}
+def get_me(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    profile = {
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "role": current_user.role.value,
+        "is_active": current_user.is_active,
+        "name": ""
+    }
+    if current_user.role == RoleEnum.admin and current_user.admin:
+        profile["name"] = current_user.admin.name
+    elif current_user.role == RoleEnum.hod and current_user.hod:
+        profile["name"] = current_user.hod.name
+        profile["department_id"] = current_user.hod.department_id
+    elif current_user.role == RoleEnum.faculty and current_user.faculty:
+        profile["name"] = current_user.faculty.name
+        profile["department_id"] = current_user.faculty.department_id
+        profile["class_id"] = current_user.faculty.class_id
+    elif current_user.role == RoleEnum.student and current_user.student:
+        profile["name"] = current_user.student.name
+        profile["class_id"] = current_user.student.class_id
+        
+    return profile

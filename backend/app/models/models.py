@@ -36,12 +36,12 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    admin = relationship("Admin", back_populates="user", uselist=False)
-    faculty = relationship("Faculty", back_populates="user", uselist=False)
-    hod = relationship("HOD", back_populates="user", uselist=False)
-    student = relationship("Student", back_populates="user", uselist=False)
-    events_created = relationship("Event", back_populates="creator")
-    notifications = relationship("Notification", back_populates="user")
+    admin = relationship("Admin", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    faculty = relationship("Faculty", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    hod = relationship("HOD", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    student = relationship("Student", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    events_created = relationship("Event", back_populates="creator", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
 
 class Department(Base):
@@ -83,7 +83,7 @@ class HOD(Base):
     employee_id = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(150), nullable=True)
-    mobile_number = Column(String(15), nullable=True)
+    mobile_number = Column(String(20), nullable=True)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
 
     user = relationship("User", back_populates="hod")
@@ -97,7 +97,7 @@ class Faculty(Base):
     employee_id = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(150), nullable=True)
-    mobile_number = Column(String(15), nullable=True)
+    mobile_number = Column(String(20), nullable=True)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
     class_id = Column(Integer, ForeignKey("classes.id"), nullable=True)
     designation = Column(String(100), nullable=True)
@@ -114,7 +114,7 @@ class Student(Base):
     registration_number = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(150), nullable=True)
-    mobile_number = Column(String(15), nullable=True)
+    mobile_number = Column(String(20), nullable=True)
     class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
 
     user = relationship("User", back_populates="student")

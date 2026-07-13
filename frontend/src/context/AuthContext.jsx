@@ -12,7 +12,6 @@ export function AuthProvider({ children }) {
     const userData = localStorage.getItem('user')
     if (token && userData) {
       setUser(JSON.parse(userData))
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
     }
     setLoading(false)
   }, [])
@@ -23,7 +22,6 @@ export function AuthProvider({ children }) {
     const userData = { id: user_id, name, role: userRole }
     localStorage.setItem('token', access_token)
     localStorage.setItem('user', JSON.stringify(userData))
-    api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
     setUser(userData)
     return userData
   }
@@ -31,7 +29,6 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    delete api.defaults.headers.common['Authorization']
     setUser(null)
   }
 

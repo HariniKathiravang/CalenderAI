@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date, time, datetime
 from app.models.models import RoleEnum, TargetTypeEnum, PriorityEnum
@@ -244,7 +244,7 @@ class EventOut(BaseModel):
     attachment_url: Optional[str] = None
     created_by: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     targets: List[EventTargetOut] = []
     creator_name: Optional[str] = None
 

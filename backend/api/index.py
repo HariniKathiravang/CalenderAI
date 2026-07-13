@@ -1,7 +1,7 @@
 import sys
 import os
 
-# Add parent directory to path to allow importing app and main modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add the parent directory (backend) to the Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from main import app

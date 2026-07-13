@@ -55,16 +55,26 @@ app = FastAPI(
 )
 
 
+from starlette.exceptions import HTTPException as StarletteHTTPException
+import logging
+import traceback
+
+logger = logging.getLogger(__name__)
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    import traceback
+    logger.error(f"Global exception: {exc}")
+    logger.error(traceback.format_exc())
     return JSONResponse(
         status_code=500,
-        content={
-            "detail": "Internal Server Error",
-            "message": str(exc),
-            "traceback": traceback.format_exc()
-        }
+        content={"detail": "Internal Server Error"}
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
     )
 
 
@@ -76,9 +86,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount uploads
-if os.path.exists(settings.UPLOAD_DIR):
-    app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+# Ensure upload dir exists before mount
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 # Include routers
 app.include_router(auth.router, prefix="/api")
@@ -100,52 +110,4 @@ def health():
     return {"status": "healthy"}
 
 
-@app.get("/api/db-test")
-def db_test():
-    results = {}
-    
-    # 1. Test database connection
-    try:
-        from sqlalchemy import text
-        db = SessionLocal()
-        db.execute(text("SELECT 1"))
-        db.close()
-        results["database"] = "connected"
-    except Exception as e:
-        import traceback
-        results["database"] = f"error: {e}\n{traceback.format_exc()}"
-        
-    # 2. Test password verification (bcrypt)
-    try:
-        from app.auth.security import verify_password, get_password_hash
-        hashed = get_password_hash("testpassword")
-        if verify_password("testpassword", hashed):
-            results["bcrypt"] = "working"
-        else:
-            results["bcrypt"] = "failed to match"
-    except Exception as e:
-        import traceback
-        results["bcrypt"] = f"error: {e}\n{traceback.format_exc()}"
-        
-    # 3. Test mock login simulation
-    try:
-        from app.models.models import User, RoleEnum
-        from app.auth.security import verify_password, create_access_token
-        db = SessionLocal()
-        user = db.query(User).filter(User.username == "admin", User.role == RoleEnum.admin).first()
-        if not user:
-            results["login_sim"] = "user not found"
-        else:
-            verify_res = verify_password("Admin@123", user.password_hash)
-            token = create_access_token({"sub": str(user.id), "role": user.role.value})
-            results["login_sim"] = {
-                "user": user.username,
-                "verified": verify_res,
-                "token_len": len(token)
-            }
-        db.close()
-    except Exception as e:
-        import traceback
-        results["login_sim"] = f"error: {e}\n{traceback.format_exc()}"
-        
-    return results
+
