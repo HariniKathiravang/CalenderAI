@@ -184,6 +184,10 @@ def create_event(data: EventCreate, db: Session = Depends(get_db), current_user=
             if current_user.role == RoleEnum.faculty:
                 if current_user.faculty and t.target_id != current_user.faculty.class_id:
                     raise HTTPException(403, "Faculty can only create events for their assigned class")
+            elif current_user.role == RoleEnum.hod:
+                cls = db.query(Class).filter(Class.id == t.target_id).first()
+                if not cls or (current_user.hod and cls.department_id != current_user.hod.department_id):
+                    raise HTTPException(403, "HOD can only create events for classes in their department")
 
     event = Event(
         title=data.title,
@@ -228,10 +232,19 @@ def update_event(event_id: int, data: EventUpdate, db: Session = Depends(get_db)
 
     # Only creator or admin can edit
     if event.created_by != current_user.id and current_user.role != RoleEnum.admin:
-        # HOD can edit department events
+        # HOD can edit department/class events within their department
         if current_user.role == RoleEnum.hod:
-            dept_targets = [t for t in event.targets if t.target_type == TargetTypeEnum.DEPARTMENT]
-            if not dept_targets or (current_user.hod and dept_targets[0].target_id != current_user.hod.department_id):
+            authorized = False
+            for t in event.targets:
+                if t.target_type == TargetTypeEnum.DEPARTMENT and current_user.hod and t.target_id == current_user.hod.department_id:
+                    authorized = True
+                    break
+                if t.target_type == TargetTypeEnum.CLASS and current_user.hod:
+                    cls = db.query(Class).filter(Class.id == t.target_id).first()
+                    if cls and cls.department_id == current_user.hod.department_id:
+                        authorized = True
+                        break
+            if not authorized:
                 raise HTTPException(403, "Not authorized to edit this event")
         else:
             raise HTTPException(403, "Not authorized to edit this event")
@@ -278,8 +291,17 @@ def delete_event(event_id: int, db: Session = Depends(get_db), current_user=Depe
 
     if event.created_by != current_user.id and current_user.role != RoleEnum.admin:
         if current_user.role == RoleEnum.hod:
-            dept_targets = [t for t in event.targets if t.target_type == TargetTypeEnum.DEPARTMENT]
-            if not dept_targets or (current_user.hod and dept_targets[0].target_id != current_user.hod.department_id):
+            authorized = False
+            for t in event.targets:
+                if t.target_type == TargetTypeEnum.DEPARTMENT and current_user.hod and t.target_id == current_user.hod.department_id:
+                    authorized = True
+                    break
+                if t.target_type == TargetTypeEnum.CLASS and current_user.hod:
+                    cls = db.query(Class).filter(Class.id == t.target_id).first()
+                    if cls and cls.department_id == current_user.hod.department_id:
+                        authorized = True
+                        break
+            if not authorized:
                 raise HTTPException(403, "Not authorized to delete this event")
         else:
             raise HTTPException(403, "Not authorized to delete this event")
