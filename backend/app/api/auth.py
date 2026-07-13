@@ -4,6 +4,7 @@ from app.database.session import get_db
 from app.schemas.schemas import LoginRequest, Token
 from app.models.models import User, Admin, HOD, Faculty, Student, RoleEnum
 from app.auth.security import verify_password, create_access_token
+from app.auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
