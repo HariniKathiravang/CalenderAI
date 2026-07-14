@@ -2,9 +2,15 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import ollama
 import json
+import logging
+import os
+
+logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI()
+
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:120b-cloud")
 
 
 # Request body model
@@ -15,7 +21,8 @@ class PromptRequest(BaseModel):
 @app.get("/")
 def home():
     return {
-        "message": "OCR to Structured JSON API is running"
+        "message": "OCR to Structured JSON API is running",
+        "model": OLLAMA_MODEL
     }
 
 
@@ -57,7 +64,7 @@ EXPECTED JSON FORMAT:
 
         # Send prompt to Ollama
         response = ollama.chat(
-            model="gpt-oss:120b-cloud",
+            model=OLLAMA_MODEL,
             messages=[
                 {
                     "role": "user",
@@ -83,8 +90,8 @@ EXPECTED JSON FORMAT:
             "data": structured_data
         }
 
-    except json.JSONDecodeError:
-
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error: {e}")
         return {
             "success": False,
             "error": "Invalid JSON returned by model",
@@ -92,7 +99,7 @@ EXPECTED JSON FORMAT:
         }
 
     except Exception as e:
-
+        logger.error(f"LLM processing failed: {e}")
         return {
             "success": False,
             "error": str(e)

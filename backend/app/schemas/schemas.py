@@ -309,3 +309,4 @@ class BulkImportResult(BaseModel):
 class UploadResponse(BaseModel):
     file_url: str
     filename: str
+    parsed_metadata: Optional[dict] = None

@@ -11,7 +11,7 @@ export default function EventForm({ initial, onSubmit, onCancel, userRole, userD
     end_time: initial?.end_time || '',
     venue: initial?.venue || '',
     target_type: initial?.targets?.[0]?.target_type || (userRole === 'admin' ? 'COLLEGE' : userRole === 'hod' ? 'DEPARTMENT' : 'CLASS'),
-    target_id: initial?.targets?.[0]?.target_id || null,
+    target_id: initial?.targets?.[0]?.target_id || (userRole === 'faculty' ? userClassId : null),
   })
   const [departments, setDepartments] = useState([])
   const [classes, setClasses] = useState([])
@@ -23,7 +23,7 @@ export default function EventForm({ initial, onSubmit, onCancel, userRole, userD
     if (userRole === 'admin') {
       api.get('/departments/').then(r => setDepartments(r.data)).catch(() => {})
       api.get('/classes/').then(r => setClasses(r.data)).catch(() => {})
-    } else if (userRole === 'hod') {
+    } else if (userRole === 'hod' || userRole === 'faculty') {
       api.get('/classes/').then(r => setClasses(r.data)).catch(() => {})
     }
   }, [userRole])
@@ -37,11 +37,7 @@ export default function EventForm({ initial, onSubmit, onCancel, userRole, userD
       if (file) {
         const formData = new FormData()
         formData.append('file', file)
-        const uploadRes = await api.post('/events/upload', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        })
+        const uploadRes = await api.post('/events/upload', formData)
         attachment_url = uploadRes.data.file_url
       }
 

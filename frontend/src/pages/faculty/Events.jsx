@@ -79,6 +79,7 @@ export default function FacultyEvents() {
           onSubmit={modal === 'create' ? handleCreate : handleUpdate}
           onCancel={() => setModal(null)}
           userRole={user?.role}
+          userClassId={user?.class_id}
         />
       </Modal>
     </div>

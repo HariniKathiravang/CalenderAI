@@ -3,6 +3,10 @@ import uuid
 from fastapi import UploadFile
 from app.core.config import settings
 from app.database.supabase import get_supabase_client
+from app.services.llm_service import parse_event_from_file
+import logging
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".doc", ".docx", ".xlsx", ".csv"}
 
@@ -12,7 +16,7 @@ def _get_extension(filename: str) -> str:
 
 
 async def save_upload(file: UploadFile) -> dict:
-    """Save uploaded file to Supabase Storage or local disk."""
+    """Save uploaded file to Supabase Storage or local disk, and extract event metadata."""
     ext = _get_extension(file.filename or "")
     if ext not in ALLOWED_EXTENSIONS:
         raise ValueError(f"File type '{ext}' not allowed")
@@ -23,9 +27,13 @@ async def save_upload(file: UploadFile) -> dict:
         
     unique_name = f"{uuid.uuid4().hex}{ext}"
 
-    # TODO: Connect LLM parser here
-    # parsed_metadata = await parse_event_from_file(content, file.filename)
-    # Return parsed title, description, dates when LLM is connected.
+    # Parse event metadata from file using OCR + LLM
+    parsed_metadata = {}
+    try:
+        parsed_metadata = await parse_event_from_file(content, file.filename or "")
+    except Exception as e:
+        logger.warning(f"Failed to parse event metadata from file: {e}")
+        parsed_metadata = {}
 
     if settings.use_supabase_storage:
         client = get_supabase_client()
@@ -37,10 +45,18 @@ async def save_upload(file: UploadFile) -> dict:
                 {"content-type": file.content_type or "application/octet-stream"},
             )
             public_url = client.storage.from_(bucket).get_public_url(unique_name)
-            return {"file_url": public_url, "filename": unique_name}
+            return {
+                "file_url": public_url,
+                "filename": unique_name,
+                "parsed_metadata": parsed_metadata
+            }
 
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     filepath = os.path.join(settings.UPLOAD_DIR, unique_name)
     with open(filepath, "wb") as f:
         f.write(content)
-    return {"file_url": f"/uploads/{unique_name}", "filename": unique_name}
+    return {
+        "file_url": f"/uploads/{unique_name}",
+        "filename": unique_name,
+        "parsed_metadata": parsed_metadata
+    }
